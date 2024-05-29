@@ -290,7 +290,7 @@ function updateDecorations() {
 						passingTests.push(decoration);
 						break;
 					case 'Fail':
-						const hoverMessage: string = test.failure[0].message + "\n\n" + test.failure[0]["stack-trace"];
+						const hoverMessage: string = test.failure[0].message.toString().replace(/</g,'&lt;').replace(/>/g,'&gt;') + "\n\n" + test.failure[0]["stack-trace"];
 						decoration = { range: new vscode.Range(startPos, endPos), hoverMessage: hoverMessage };
 						failingTests.push(decoration);
 
