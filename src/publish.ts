@@ -28,9 +28,7 @@ export function publishApp(publishType: PublishType): Promise<PublishResult> {
             sendDebugEvent('publishApp-publishFromPowerShell');
             
             shouldPublishApp = true;
-            if (existsSync(getPublishCompletionPath())) {
-                unlinkSync(getPublishCompletionPath());
-            }
+            RemovePublishCompletionFile();
 
             await vscode.commands.executeCommand('al.package');
             const resultExists = await awaitFileExistence(getPublishCompletionPath(), getCurrentWorkspaceConfig().publishTimeout);
@@ -72,9 +70,16 @@ export function publishApp(publishType: PublishType): Promise<PublishResult> {
     });
 }
 
+function RemovePublishCompletionFile() {
+    if (existsSync(getPublishCompletionPath())) {
+        unlinkSync(getPublishCompletionPath());
+    }
+}
+
 export async function publishAppFile(uri: vscode.Uri): Promise<PublishResult> {
     return new Promise(async resolve => {
         shouldPublishApp = false;
+        RemovePublishCompletionFile();
         const terminal = getALTestRunnerTerminal(getTerminalName());
         terminal.show(true);
         terminal.sendText(' ');
@@ -101,11 +106,21 @@ export async function onChangeAppFile(uri: vscode.Uri) {
         return;
     }
 
-    if ((uri.fsPath.indexOf('dep.app') > 0) || (uri.fsPath.indexOf('.alpackages') > 0)) {
+    if ((uri.fsPath.indexOf('.alpackages') > 0)) {
         return;
     }
 
-    await publishAppFile(uri);
+    if ((uri.fsPath.indexOf('dep.app') === -1) ) {
+        let depFilePath = uri.fsPath.substring(0, uri.fsPath.lastIndexOf('.')) + '.dep.app';
+        if (existsSync(depFilePath)) {
+            return; // Instead publish when the dep-file is updated
+        }
+    }
+
+    let result = await publishAppFile(uri);
+    if (!result.success) {
+        vscode.window.showErrorMessage(result.message);
+    }
 }
 
 function getTerminalName(): string {
